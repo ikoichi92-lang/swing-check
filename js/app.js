@@ -5,7 +5,7 @@ import { AudioDetector } from './audio-detector.js';
 import { ClipStore } from './clip-store.js';
 import { LineOverlay, lineStore, LINE_COLORS } from './line-overlay.js';
 
-const APP_VERSION = 'v9';
+const APP_VERSION = 'v10';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -676,6 +676,32 @@ async function playSavedClip(meta) {
 
 $('#app-version').textContent = `Swing Check ${APP_VERSION}`;
 renderDiag();
+
+// タップ診断: どの要素がタップを受け取ったかを画面に表示する(実機調査用)
+let tapDebug = false;
+
+function describeEl(el) {
+  if (!el) return 'null';
+  const id = el.id ? '#' + el.id : '';
+  const cls = el.className && typeof el.className === 'string'
+    ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
+  return el.tagName.toLowerCase() + (id || cls);
+}
+
+document.addEventListener('pointerdown', (e) => {
+  if (!tapDebug) return;
+  const el = $('#toast');
+  el.textContent = `タップ: ${describeEl(e.target)} (${Math.round(e.clientX)},${Math.round(e.clientY)})`;
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), 4000);
+}, true); // captureで最初に見る=どの要素にも邪魔されない
+
+$('#btn-tap-debug').addEventListener('click', () => {
+  tapDebug = !tapDebug;
+  $('#btn-tap-debug').textContent = 'タップ診断: ' + (tapDebug ? 'ON' : 'OFF');
+  $('#btn-tap-debug').classList.toggle('active', tapDebug);
+});
 
 $('#btn-check-update').addEventListener('click', async () => {
   toast('更新を確認しています…');
