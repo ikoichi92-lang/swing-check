@@ -1,5 +1,5 @@
 // Service Worker: アプリ本体をキャッシュしてオフライン起動を可能にする
-const CACHE_NAME = 'swing-check-v6';
+const CACHE_NAME = 'swing-check-v7';
 const ASSETS = [
   './',
   './index.html',

@@ -5,7 +5,7 @@ import { AudioDetector } from './audio-detector.js';
 import { ClipStore } from './clip-store.js';
 import { LineOverlay, lineStore, LINE_COLORS } from './line-overlay.js';
 
-const APP_VERSION = 'v6';
+const APP_VERSION = 'v7';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -620,8 +620,11 @@ async function renderLibrary() {
     li.querySelector('.clip-date').textContent = formatDate(meta.createdAt);
     li.querySelector('.clip-size').textContent = formatBytes(meta.sizeBytes);
 
-    li.querySelector('.clip-thumb').addEventListener('click', () => playSavedClip(meta));
-    li.querySelector('.clip-info').addEventListener('click', () => playSavedClip(meta));
+    // 行全体をタップ対象にする(削除ボタンを除く)
+    li.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-danger')) return;
+      playSavedClip(meta);
+    });
     li.querySelector('.btn-danger').addEventListener('click', async (e) => {
       e.stopPropagation();
       if (!confirm('このクリップを削除しますか?')) return;
@@ -638,6 +641,7 @@ async function renderLibrary() {
 }
 
 async function playSavedClip(meta) {
+  toast('読み込み中…'); // タップが届いているかの確認も兼ねる
   try {
     const blob = await store.getBlob(meta.id);
     if (!blob) { toast('動画データが見つかりません'); return; }
