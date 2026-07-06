@@ -5,7 +5,7 @@ import { AudioDetector } from './audio-detector.js';
 import { ClipStore } from './clip-store.js';
 import { LineOverlay, lineStore, LINE_COLORS } from './line-overlay.js';
 
-const APP_VERSION = 'v8';
+const APP_VERSION = 'v9';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -676,6 +676,16 @@ async function playSavedClip(meta) {
 
 $('#app-version').textContent = `Swing Check ${APP_VERSION}`;
 renderDiag();
+
+$('#btn-check-update').addEventListener('click', async () => {
+  toast('更新を確認しています…');
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg) await reg.update();
+  } catch { /* ignore */ }
+  // 新SWがあればcontrollerchange経由で自動リロードされるが、念のため少し待って強制リロード
+  setTimeout(() => location.reload(), 1500);
+});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
