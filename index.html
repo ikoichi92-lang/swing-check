@@ -105,6 +105,22 @@
     <span id="replay-speed-badge" class="speed-badge"></span>
   </div>
   <div class="replay-controls">
+    <div class="replay-tools">
+      <div class="speed-buttons compact" id="replay-speed-buttons">
+        <button data-speed="0.25" class="btn btn-small btn-toggle">0.25</button>
+        <button data-speed="0.5" class="btn btn-small btn-toggle">0.5</button>
+        <button data-speed="0.75" class="btn btn-small btn-toggle">0.75</button>
+        <button data-speed="1" class="btn btn-small btn-toggle">1.0</button>
+      </div>
+      <button id="btn-line-mode" class="btn btn-small btn-ghost">ライン</button>
+    </div>
+    <div id="line-toolbar" class="line-toolbar hidden">
+      <button data-linetype="free" class="btn btn-small btn-toggle">斜め</button>
+      <button data-linetype="v" class="btn btn-small btn-toggle">縦</button>
+      <button data-linetype="h" class="btn btn-small btn-toggle">横</button>
+      <button id="btn-line-color" class="btn btn-small">色</button>
+      <button id="btn-line-clear" class="btn btn-small btn-ghost">全消去</button>
+    </div>
     <input type="range" id="replay-seek" min="0" max="1000" step="1" value="0">
     <div class="replay-buttons" id="replay-buttons-new">
       <button id="btn-save-clip" class="btn btn-primary">保存</button>

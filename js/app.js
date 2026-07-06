@@ -3,6 +3,7 @@ import { loadSettings, saveSettings } from './settings.js';
 import { RingRecorder } from './ring-recorder.js';
 import { AudioDetector } from './audio-detector.js';
 import { ClipStore } from './clip-store.js';
+import { LineOverlay, lineStore, LINE_COLORS } from './line-overlay.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -59,7 +60,8 @@ bindRange('#set-pre', '#val-pre', 'preSec');
 bindRange('#set-post', '#val-post', 'postSec');
 bindRange('#set-cooldown', '#val-cooldown', 'cooldownSec');
 
-const speedButtons = document.querySelectorAll('#speed-buttons .btn');
+// 速度ボタンは設定画面とリプレイ画面の2箇所にあり、常に同期させる
+const speedButtons = document.querySelectorAll('#speed-buttons .btn, #replay-speed-buttons .btn');
 function renderSpeedButtons() {
   speedButtons.forEach((b) => b.classList.toggle('active', parseFloat(b.dataset.speed) === settings.speed));
 }
@@ -284,8 +286,64 @@ seekBar.addEventListener('input', () => {
 });
 seekBar.addEventListener('change', () => { seekDragging = false; });
 
+/* ================= ライン描画 ================= */
+
+// ライブプレビューは表示のみ、リプレイ画面では描画も可能
+new LineOverlay($('.camera-wrap'), $('#preview'));
+const replayLines = new LineOverlay($('.replay-video-wrap'), replayVideo);
+
+const lineToolbar = $('#line-toolbar');
+const lineModeBtn = $('#btn-line-mode');
+const lineTypeButtons = document.querySelectorAll('#line-toolbar [data-linetype]');
+let lineColorIndex = 0;
+
+function setLineType(type) {
+  replayLines.setDrawType(type);
+  lineTypeButtons.forEach((b) => b.classList.toggle('active', b.dataset.linetype === type));
+}
+
+function exitLineMode() {
+  lineToolbar.classList.add('hidden');
+  lineModeBtn.classList.remove('active');
+  setLineType(null);
+}
+
+lineModeBtn.addEventListener('click', () => {
+  const opening = lineToolbar.classList.contains('hidden');
+  if (opening) {
+    lineToolbar.classList.remove('hidden');
+    lineModeBtn.classList.add('active');
+    setLineType('free');
+  } else {
+    exitLineMode();
+  }
+});
+
+lineTypeButtons.forEach((b) => {
+  b.addEventListener('click', () => setLineType(b.dataset.linetype));
+});
+
+const lineColorBtn = $('#btn-line-color');
+function applyLineColor() {
+  const color = LINE_COLORS[lineColorIndex];
+  replayLines.setColor(color);
+  lineColorBtn.style.background = color;
+  lineColorBtn.style.color = '#0d1512';
+}
+lineColorBtn.addEventListener('click', () => {
+  lineColorIndex = (lineColorIndex + 1) % LINE_COLORS.length;
+  applyLineColor();
+});
+applyLineColor();
+
+$('#btn-line-clear').addEventListener('click', () => {
+  lineStore.clear();
+  toast('線を全て消去しました');
+});
+
 function closeReplay() {
   overlay.classList.add('hidden');
+  exitLineMode();
   replayVideo.pause();
   replayVideo.removeAttribute('src');
   replayVideo.load();

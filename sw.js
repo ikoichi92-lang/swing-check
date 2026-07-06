@@ -1,5 +1,5 @@
 // Service Worker: アプリ本体をキャッシュしてオフライン起動を可能にする
-const CACHE_NAME = 'swing-check-v1';
+const CACHE_NAME = 'swing-check-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   './js/ring-recorder.js',
   './js/audio-detector.js',
   './js/clip-store.js',
+  './js/line-overlay.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
