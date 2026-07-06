@@ -5,7 +5,7 @@ import { AudioDetector } from './audio-detector.js';
 import { ClipStore } from './clip-store.js';
 import { LineOverlay, lineStore, LINE_COLORS } from './line-overlay.js';
 
-const APP_VERSION = 'v7';
+const APP_VERSION = 'v8';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -16,12 +16,21 @@ function renderDiag() {
     `バージョン: ${APP_VERSION} / カメラ: ${diag.camera} / ズーム: ${diag.zoom}`;
 }
 
-// 実機での不具合調査用: 予期しないエラーを画面に出す
+// 実機での不具合調査用: 予期しないエラーを画面に出す。
+// 同じエラーが連発してもトーストは10秒に1回まで(出続けて操作を邪魔しないように)
+let lastErrorToastAt = 0;
+function errorToast(msg) {
+  const now = Date.now();
+  if (now - lastErrorToastAt < 10000) return;
+  lastErrorToastAt = now;
+  try { toast(msg); } catch { /* ignore */ }
+}
 window.addEventListener('error', (e) => {
-  try { toast('エラー: ' + e.message); } catch { /* ignore */ }
+  const where = e.filename ? ` (${e.filename.split('/').pop()}:${e.lineno})` : '';
+  errorToast('エラー: ' + e.message + where);
 });
 window.addEventListener('unhandledrejection', (e) => {
-  try { toast('エラー: ' + (e.reason && e.reason.message ? e.reason.message : e.reason)); } catch { /* ignore */ }
+  errorToast('エラー: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
 });
 
 const settings = loadSettings();
@@ -385,16 +394,18 @@ function startReplayLoop(clip) {
 
 // 区間ループ+シークバー更新
 setInterval(() => {
-  if (!replaying || overlay.classList.contains('hidden')) return;
-  const { playStart = 0, playEnd = 0 } = replaying;
-  if (playEnd <= playStart) return;
-  if (!replayVideo.paused && replayVideo.currentTime >= playEnd - 0.05) {
-    replayVideo.currentTime = playStart;
-  }
-  if (!seekDragging) {
-    const p = (replayVideo.currentTime - playStart) / (playEnd - playStart);
-    seekBar.value = Math.round(Math.min(1, Math.max(0, p)) * 1000);
-  }
+  try {
+    if (!replaying || overlay.classList.contains('hidden')) return;
+    const { playStart = 0, playEnd = 0 } = replaying;
+    if (playEnd <= playStart) return;
+    if (!replayVideo.paused && replayVideo.currentTime >= playEnd - 0.05) {
+      replayVideo.currentTime = playStart;
+    }
+    if (!seekDragging) {
+      const p = (replayVideo.currentTime - playStart) / (playEnd - playStart);
+      seekBar.value = Math.round(Math.min(1, Math.max(0, p)) * 1000);
+    }
+  } catch { /* 50ms間隔のループでエラーを連発させない */ }
 }, 50);
 
 // タップで一時停止/再開
