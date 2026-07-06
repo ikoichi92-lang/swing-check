@@ -153,30 +153,92 @@ zoomSlider.addEventListener('input', () => {
   saveSettings(settings);
 });
 
+/* ---- カメラ(レンズ)切替 ---- */
+
+const cameraSelect = $('#camera-select');
+let switchingCamera = false;
+
+async function populateCameraSelect() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter((d) => d.kind === 'videoinput');
+    if (cams.length < 2) { cameraSelect.classList.add('hidden'); return; }
+    const currentId = stream.getVideoTracks()[0].getSettings().deviceId || '';
+    cameraSelect.innerHTML = '';
+    cams.forEach((cam, i) => {
+      const opt = document.createElement('option');
+      opt.value = cam.deviceId;
+      opt.textContent = cam.label || `カメラ${i + 1}`;
+      if (cam.deviceId === currentId) opt.selected = true;
+      cameraSelect.appendChild(opt);
+    });
+    cameraSelect.classList.remove('hidden');
+  } catch { /* enumerateDevices非対応でも動作は継続 */ }
+}
+
+cameraSelect.addEventListener('change', async () => {
+  if (switchingCamera || !stream) return;
+  switchingCamera = true;
+  settings.cameraId = cameraSelect.value;
+  settings.zoom = 0; // レンズが変わるとズーム範囲も変わるためリセット
+  saveSettings(settings);
+  try {
+    stopSession();
+    await startSession();
+  } finally {
+    switchingCamera = false;
+  }
+});
+
+const AUDIO_CONSTRAINTS = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
+};
+
+function videoConstraints(cameraId) {
+  const c = {
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    frameRate: { ideal: 60 },
+  };
+  if (cameraId) c.deviceId = { exact: cameraId };
+  else c.facingMode = 'environment';
+  return c;
+}
+
 async function startSession() {
   $('#start-error').textContent = '';
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: 'environment',
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 60 },
-      },
-      audio: {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false,
-      },
+      video: videoConstraints(settings.cameraId),
+      audio: AUDIO_CONSTRAINTS,
     });
   } catch (e) {
-    $('#start-error').textContent =
-      'カメラ/マイクを開始できませんでした。\nブラウザの権限設定を確認してください。\n(' + e.name + ')';
-    return;
+    // 保存していたカメラが見つからない場合(deviceId変化等)はデフォルトで再試行
+    if (settings.cameraId) {
+      settings.cameraId = '';
+      saveSettings(settings);
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: videoConstraints(''),
+          audio: AUDIO_CONSTRAINTS,
+        });
+      } catch (e2) {
+        $('#start-error').textContent =
+          'カメラ/マイクを開始できませんでした。\nブラウザの権限設定を確認してください。\n(' + e2.name + ')';
+        return;
+      }
+    } else {
+      $('#start-error').textContent =
+        'カメラ/マイクを開始できませんでした。\nブラウザの権限設定を確認してください。\n(' + e.name + ')';
+      return;
+    }
   }
 
   $('#preview').srcObject = stream;
   setupZoom();
+  populateCameraSelect();
 
   // セグメント長は「インパクト前秒数+余裕」。セッション中の preSec 変更は次回セッションから反映
   recorder = new RingRecorder(stream, Math.max(4, settings.preSec + 2));
@@ -208,6 +270,7 @@ function stopSession() {
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   videoTrack = null;
   zoomRow.classList.add('hidden');
+  cameraSelect.classList.add('hidden');
   $('#preview').srcObject = null;
   $('#idle-cover').classList.remove('hidden');
   $('#session-hud').classList.add('hidden');
@@ -334,7 +397,10 @@ seekBar.addEventListener('change', () => { seekDragging = false; });
 
 // ライブプレビューは表示のみ、リプレイ画面では描画も可能
 new LineOverlay($('.camera-wrap'), $('#preview'));
-const replayLines = new LineOverlay($('.replay-video-wrap'), replayVideo);
+const replayLines = new LineOverlay($('.replay-video-wrap'), replayVideo, {
+  // 1本追加したら移動モードへ戻す(触るたびに線が増える誤操作防止)
+  onLineAdded: () => setLineType('move'),
+});
 
 const lineToolbar = $('#line-toolbar');
 const lineModeBtn = $('#btn-line-mode');
@@ -357,7 +423,7 @@ lineModeBtn.addEventListener('click', () => {
   if (opening) {
     lineToolbar.classList.remove('hidden');
     lineModeBtn.classList.add('active');
-    setLineType('free');
+    setLineType('move');
   } else {
     exitLineMode();
   }
@@ -379,6 +445,10 @@ lineColorBtn.addEventListener('click', () => {
   applyLineColor();
 });
 applyLineColor();
+
+$('#btn-line-undo').addEventListener('click', () => {
+  if (lineStore.undo()) toast('最後の線を消しました');
+});
 
 $('#btn-line-clear').addEventListener('click', () => {
   lineStore.clear();

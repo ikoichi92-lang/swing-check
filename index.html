@@ -28,6 +28,7 @@
     <div id="session-hud" class="hud hidden">
       <div class="hud-top">
         <span id="status-text" class="status-badge">待機中</span>
+        <select id="camera-select" class="camera-select hidden"></select>
         <button id="btn-stop" class="btn btn-small btn-danger">終了</button>
       </div>
       <div class="hud-bottom">
@@ -119,10 +120,12 @@
       <button id="btn-line-mode" class="btn btn-small btn-ghost">ライン</button>
     </div>
     <div id="line-toolbar" class="line-toolbar hidden">
+      <button data-linetype="move" class="btn btn-small btn-toggle">移動</button>
       <button data-linetype="free" class="btn btn-small btn-toggle">斜め</button>
       <button data-linetype="v" class="btn btn-small btn-toggle">縦</button>
       <button data-linetype="h" class="btn btn-small btn-toggle">横</button>
       <button id="btn-line-color" class="btn btn-small">色</button>
+      <button id="btn-line-undo" class="btn btn-small btn-ghost">戻す</button>
       <button id="btn-line-clear" class="btn btn-small btn-ghost">全消去</button>
     </div>
     <input type="range" id="replay-seek" min="0" max="1000" step="1" value="0">

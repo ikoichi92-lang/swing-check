@@ -179,8 +179,17 @@ input[type="range"]::-webkit-slider-thumb {
 .replay-tools .speed-buttons { flex: 1; }
 .speed-buttons.compact .btn { padding: 8px 0; font-size: 13px; }
 
-.line-toolbar { display: flex; gap: 8px; }
-.line-toolbar .btn { flex: 1; }
+.line-toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+.line-toolbar .btn { flex: 1 1 21%; padding-left: 0; padding-right: 0; }
+
+.camera-select {
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text);
+  padding: 6px 10px; border-radius: 999px;
+  font-size: 12px; max-width: 45%;
+  -webkit-appearance: none; appearance: none;
+}
 
 /* ===== ライン描画 ===== */
 .line-canvas {

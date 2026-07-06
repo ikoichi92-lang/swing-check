@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS = {
   cooldownSec: 5,    // 検知クールダウン秒数
   speed: 0.5,        // リプレイ再生速度
   zoom: 0,           // カメラズーム(0 = 端末デフォルトのまま)
+  cameraId: '',      // カメラ(レンズ)のdeviceId。空 = 背面デフォルト
 };
 
 export function loadSettings() {
