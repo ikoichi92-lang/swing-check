@@ -65,6 +65,14 @@ export class LineOverlay {
 
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'line-canvas';
+    // CSS適用に何が起きても親要素の外へ広がらないよう、インラインでも固定する
+    // (実機Androidでキャンバスがボタン列を覆いタップを奪う不具合の再発防止)
+    Object.assign(this.canvas.style, {
+      position: 'absolute',
+      left: '0', top: '0', width: '100%', height: '100%',
+      zIndex: '5',
+      pointerEvents: 'none',
+    });
     wrap.appendChild(this.canvas);
     this.ctx = this.canvas.getContext('2d');
 
@@ -93,6 +101,9 @@ export class LineOverlay {
   setDrawType(type) {
     this.drawType = type;
     this.canvas.classList.toggle('drawing', !!type);
+    // クラスに依存せずインラインでも制御(タップ奪取の再発防止)
+    this.canvas.style.pointerEvents = type ? 'auto' : 'none';
+    this.canvas.style.touchAction = type ? 'none' : '';
     this.dragStart = null;
     this.pending = null;
     this.grab = null;

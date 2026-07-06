@@ -5,7 +5,7 @@ import { AudioDetector } from './audio-detector.js';
 import { ClipStore } from './clip-store.js';
 import { LineOverlay, lineStore, LINE_COLORS } from './line-overlay.js';
 
-const APP_VERSION = 'v11';
+const APP_VERSION = 'v12';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -752,6 +752,15 @@ $('#btn-self-test').addEventListener('click', async () => {
         .slice(0, 3).map(describeEl).join(' > ');
       const covered = stack.startsWith(describeEl(el)) ? '' : ' ←別要素が覆っている!';
       out.push(`${name}: y=${Math.round(b.top)} ${inVp} 最前面: ${stack}${covered}`);
+    }
+    // ライン描画キャンバスが動画領域からはみ出していないかの検査
+    const wrap = document.querySelector('.replay-video-wrap');
+    const lc = wrap ? wrap.querySelector('.line-canvas') : null;
+    if (wrap && lc) {
+      const wb = wrap.getBoundingClientRect();
+      const cb = lc.getBoundingClientRect();
+      const overflow = cb.bottom > wb.bottom + 1 || cb.right > wb.right + 1;
+      out.push(`動画枠: y=${Math.round(wb.top)}〜${Math.round(wb.bottom)} / キャンバス: y=${Math.round(cb.top)}〜${Math.round(cb.bottom)}${overflow ? ' ←はみ出し!' : ' OK'}`);
     }
     closeReplay();
     out.push('検査完了。この画面をスクリーンショットして報告してください。');
