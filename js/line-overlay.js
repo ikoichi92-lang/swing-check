@@ -10,31 +10,20 @@
 // 線を1本追加したら onLineAdded を呼び、呼び出し側が move モードへ戻す
 // (追加モードのまま触るたびに線が増える誤操作を防ぐ)。
 
-const LINES_KEY = 'swing-check:lines';
-
 export const LINE_COLORS = ['#38c17f', '#e5c04b', '#e05a5a', '#ffffff'];
 
 const GRAB_ENDPOINT_PX = 26; // 端点をつかめる距離
 const GRAB_LINE_PX = 20;     // 線本体をつかめる距離
 
-function loadLines() {
-  try {
-    const raw = localStorage.getItem(LINES_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-// 全 LineOverlay インスタンスで共有する線データ
+// 全 LineOverlay インスタンスで共有する線データ。
+// カメラ固定のセッション中だけ意味を持つため、永続化しない
+// (アプリを閉じる/リロードすると消える)。
 export const lineStore = {
   // {type:'free'|'v'|'h', x1,y1,x2,y2, color} 座標は正規化(0〜1)
-  lines: loadLines(),
+  lines: [],
   listeners: new Set(),
 
-  save() {
-    try { localStorage.setItem(LINES_KEY, JSON.stringify(this.lines)); } catch { /* ignore */ }
-  },
+  save() { /* セッション限り。永続化しない */ },
   add(line) {
     this.lines.push(line);
     this.save();

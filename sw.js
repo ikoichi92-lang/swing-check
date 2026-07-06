@@ -1,5 +1,5 @@
 // Service Worker: アプリ本体をキャッシュしてオフライン起動を可能にする
-const CACHE_NAME = 'swing-check-v4';
+const CACHE_NAME = 'swing-check-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -30,9 +30,27 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// キャッシュ優先(アプリシェルのみ)。ネットワーク成功時はキャッシュを更新する
+// HTML(ナビゲーション)はネットワーク優先: 常に最新のシェルを取得し、
+// 新旧バージョンのファイル混在による不具合を防ぐ。オフライン時のみキャッシュ。
+// それ以外のアセットはキャッシュ優先+バックグラウンド更新。
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request)
+        .then((res) => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(e.request).then((c) => c || caches.match('./')))
+    );
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then((cached) => {
       const fetched = fetch(e.request)

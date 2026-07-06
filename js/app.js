@@ -7,6 +7,14 @@ import { LineOverlay, lineStore, LINE_COLORS } from './line-overlay.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+// 実機での不具合調査用: 予期しないエラーを画面に出す
+window.addEventListener('error', (e) => {
+  try { toast('エラー: ' + e.message); } catch { /* ignore */ }
+});
+window.addEventListener('unhandledrejection', (e) => {
+  try { toast('エラー: ' + (e.reason && e.reason.message ? e.reason.message : e.reason)); } catch { /* ignore */ }
+});
+
 const settings = loadSettings();
 const store = new ClipStore();
 
@@ -612,19 +620,23 @@ async function renderLibrary() {
 }
 
 async function playSavedClip(meta) {
-  const blob = await store.getBlob(meta.id);
-  if (!blob) { toast('動画データが見つかりません'); return; }
-  discardCurrentClip();
-  currentClip = {
-    blob,
-    url: URL.createObjectURL(blob),
-    impactOffsetSec: meta.impactOffsetSec,
-    startSec: meta.startSec,
-    endSec: meta.endSec,
-    savedId: meta.id,
-    createdAt: meta.createdAt,
-  };
-  openReplay(currentClip, /*savedMode*/ true);
+  try {
+    const blob = await store.getBlob(meta.id);
+    if (!blob) { toast('動画データが見つかりません'); return; }
+    discardCurrentClip();
+    currentClip = {
+      blob,
+      url: URL.createObjectURL(blob),
+      impactOffsetSec: meta.impactOffsetSec,
+      startSec: meta.startSec,
+      endSec: meta.endSec,
+      savedId: meta.id,
+      createdAt: meta.createdAt,
+    };
+    openReplay(currentClip, /*savedMode*/ true);
+  } catch (e) {
+    toast('再生に失敗しました: ' + (e && e.message ? e.message : e));
+  }
 }
 
 /* ================= Service Worker ================= */
