@@ -112,6 +112,47 @@ document.addEventListener('visibilitychange', () => {
 
 const statusText = $('#status-text');
 
+/* ---- カメラズーム(対応端末のみ) ---- */
+
+const zoomRow = $('#zoom-row');
+const zoomSlider = $('#zoom-slider');
+const zoomValue = $('#zoom-value');
+let videoTrack = null;
+
+function applyZoom(v) {
+  if (!videoTrack) return;
+  zoomValue.textContent = '×' + Number(v).toFixed(1);
+  videoTrack.applyConstraints({ advanced: [{ zoom: v }] })
+    .catch(() => videoTrack.applyConstraints({ zoom: v }).catch(() => {}));
+}
+
+function setupZoom() {
+  videoTrack = stream.getVideoTracks()[0];
+  const caps = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+  if (!caps.zoom || caps.zoom.max <= caps.zoom.min) {
+    zoomRow.classList.add('hidden');
+    return;
+  }
+  zoomSlider.min = caps.zoom.min;
+  zoomSlider.max = caps.zoom.max;
+  zoomSlider.step = caps.zoom.step || 0.1;
+  const current = (videoTrack.getSettings && videoTrack.getSettings().zoom) || caps.zoom.min;
+  // 保存済みズームがあれば復元(範囲内にクランプ)
+  const initial = settings.zoom
+    ? Math.min(caps.zoom.max, Math.max(caps.zoom.min, settings.zoom))
+    : current;
+  zoomSlider.value = initial;
+  applyZoom(initial);
+  zoomRow.classList.remove('hidden');
+}
+
+zoomSlider.addEventListener('input', () => {
+  const v = parseFloat(zoomSlider.value);
+  applyZoom(v);
+  settings.zoom = v;
+  saveSettings(settings);
+});
+
 async function startSession() {
   $('#start-error').textContent = '';
   try {
@@ -135,6 +176,7 @@ async function startSession() {
   }
 
   $('#preview').srcObject = stream;
+  setupZoom();
 
   // セグメント長は「インパクト前秒数+余裕」。セッション中の preSec 変更は次回セッションから反映
   recorder = new RingRecorder(stream, Math.max(4, settings.preSec + 2));
@@ -164,6 +206,8 @@ function stopSession() {
     stream = null;
   }
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  videoTrack = null;
+  zoomRow.classList.add('hidden');
   $('#preview').srcObject = null;
   $('#idle-cover').classList.remove('hidden');
   $('#session-hud').classList.add('hidden');
@@ -518,5 +562,14 @@ async function playSavedClip(meta) {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+  // 新バージョンのSWが有効になったら自動リロードして即反映する
+  // (初回インストール時とセッション中は除く。セッション中のリロードは録画が切れる)
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloaded || stream) return;
+    reloaded = true;
+    location.reload();
   });
 }
