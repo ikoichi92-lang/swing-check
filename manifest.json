@@ -1,0 +1,15 @@
+{
+  "name": "Swing Check",
+  "short_name": "SwingCheck",
+  "description": "打球音検知でスイングを自動撮影・スローリプレイするゴルフ練習用PWA",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d1512",
+  "theme_color": "#0b3d2e",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Swing Check</title>
+<meta name="theme-color" content="#0b3d2e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SwingCheck">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== 撮影ビュー ===== -->
+<section id="view-main" class="view active">
+  <div class="camera-wrap">
+    <video id="preview" autoplay muted playsinline></video>
+    <div id="idle-cover" class="idle-cover">
+      <h1>Swing Check</h1>
+      <p>スマホを三脚に固定し、スイングが写る位置に置いてください。<br>横持ち推奨です。</p>
+      <button id="btn-start" class="btn btn-primary btn-big">セッション開始</button>
+      <p id="start-error" class="error-text"></p>
+    </div>
+    <div id="session-hud" class="hud hidden">
+      <div class="hud-top">
+        <span id="status-text" class="status-badge">待機中</span>
+        <button id="btn-stop" class="btn btn-small btn-danger">終了</button>
+      </div>
+      <div class="hud-bottom">
+        <div class="meter-row">
+          <div class="meter" id="meter-main">
+            <div class="meter-fill"></div>
+            <div class="meter-threshold"></div>
+          </div>
+        </div>
+        <button id="btn-manual" class="btn btn-primary">手動でクリップ切り出し</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 保存一覧ビュー ===== -->
+<section id="view-library" class="view">
+  <header class="view-header">
+    <h2>保存クリップ</h2>
+    <span id="storage-usage" class="storage-usage"></span>
+  </header>
+  <ul id="clip-list" class="clip-list"></ul>
+  <p id="library-empty" class="empty-text">保存されたクリップはありません</p>
+</section>
+
+<!-- ===== 設定ビュー ===== -->
+<section id="view-settings" class="view">
+  <header class="view-header"><h2>設定</h2></header>
+  <div class="settings-body">
+
+    <div class="setting-item">
+      <label>音量しきい値 <span id="val-threshold"></span></label>
+      <div class="meter" id="meter-settings">
+        <div class="meter-fill"></div>
+        <div class="meter-threshold"></div>
+      </div>
+      <input type="range" id="set-threshold" min="0.05" max="1" step="0.01">
+      <p class="setting-hint">セッション中は現在の音量がメーターに表示されます。手を叩いた時にメーターが縦線(しきい値)を超えるように調整してください。</p>
+    </div>
+
+    <div class="setting-item">
+      <label>インパクト前の秒数 <span id="val-pre"></span>秒</label>
+      <input type="range" id="set-pre" min="1" max="6" step="0.5">
+    </div>
+
+    <div class="setting-item">
+      <label>インパクト後の秒数 <span id="val-post"></span>秒</label>
+      <input type="range" id="set-post" min="0.5" max="5" step="0.5">
+    </div>
+
+    <div class="setting-item">
+      <label>リプレイ再生速度</label>
+      <div class="speed-buttons" id="speed-buttons">
+        <button data-speed="0.25" class="btn btn-toggle">0.25x</button>
+        <button data-speed="0.5" class="btn btn-toggle">0.5x</button>
+        <button data-speed="0.75" class="btn btn-toggle">0.75x</button>
+        <button data-speed="1" class="btn btn-toggle">1.0x</button>
+      </div>
+    </div>
+
+    <div class="setting-item">
+      <label>検知クールダウン <span id="val-cooldown"></span>秒</label>
+      <input type="range" id="set-cooldown" min="2" max="15" step="1">
+      <p class="setting-hint">検知後この秒数は次の検知を行いません(多重検知防止)。</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===== リプレイオーバーレイ ===== -->
+<div id="replay-overlay" class="replay-overlay hidden">
+  <div class="replay-video-wrap">
+    <video id="replay-video" muted playsinline loop></video>
+    <div id="replay-paused-badge" class="paused-badge hidden">一時停止</div>
+    <span id="replay-speed-badge" class="speed-badge"></span>
+  </div>
+  <div class="replay-controls">
+    <input type="range" id="replay-seek" min="0" max="1000" step="1" value="0">
+    <div class="replay-buttons" id="replay-buttons-new">
+      <button id="btn-save-clip" class="btn btn-primary">保存</button>
+      <button id="btn-discard-clip" class="btn btn-ghost">破棄</button>
+    </div>
+    <div class="replay-buttons hidden" id="replay-buttons-saved">
+      <button id="btn-export-clip" class="btn btn-primary">エクスポート</button>
+      <button id="btn-delete-clip" class="btn btn-danger">削除</button>
+      <button id="btn-close-replay" class="btn btn-ghost">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- ===== 下部ナビ ===== -->
+<nav class="bottom-nav">
+  <button data-view="view-main" class="nav-btn active">撮影</button>
+  <button data-view="view-library" class="nav-btn">保存一覧</button>
+  <button data-view="view-settings" class="nav-btn">設定</button>
+</nav>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
