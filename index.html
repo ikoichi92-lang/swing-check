@@ -24,6 +24,7 @@
       <p>スマホを三脚に固定し、スイングが写る位置に置いてください。<br>横持ち推奨です。</p>
       <button id="btn-start" class="btn btn-primary btn-big">セッション開始</button>
       <p id="start-error" class="error-text"></p>
+      <p id="app-version" class="version-text"></p>
     </div>
     <div id="session-hud" class="hud hidden">
       <div class="hud-top">
@@ -97,6 +98,11 @@
       <label>検知クールダウン <span id="val-cooldown"></span>秒</label>
       <input type="range" id="set-cooldown" min="2" max="15" step="1">
       <p class="setting-hint">検知後この秒数は次の検知を行いません(多重検知防止)。</p>
+    </div>
+
+    <div class="setting-item">
+      <label>アプリ情報</label>
+      <p id="diag-info" class="setting-hint">バージョン: -</p>
     </div>
 
   </div>

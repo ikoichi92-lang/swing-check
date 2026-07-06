@@ -5,7 +5,16 @@ import { AudioDetector } from './audio-detector.js';
 import { ClipStore } from './clip-store.js';
 import { LineOverlay, lineStore, LINE_COLORS } from './line-overlay.js';
 
+const APP_VERSION = 'v6';
+
 const $ = (sel) => document.querySelector(sel);
+
+// バージョン表示と診断情報(実機での不具合切り分け用)
+const diag = { camera: '-', zoom: '-' };
+function renderDiag() {
+  $('#diag-info').textContent =
+    `バージョン: ${APP_VERSION} / カメラ: ${diag.camera} / ズーム: ${diag.zoom}`;
+}
 
 // 実機での不具合調査用: 予期しないエラーを画面に出す
 window.addEventListener('error', (e) => {
@@ -138,9 +147,13 @@ function setupZoom() {
   videoTrack = stream.getVideoTracks()[0];
   const caps = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
   if (!caps.zoom || caps.zoom.max <= caps.zoom.min) {
+    diag.zoom = videoTrack.getCapabilities ? '非対応' : 'API非対応';
+    renderDiag();
     zoomRow.classList.add('hidden');
     return;
   }
+  diag.zoom = `${caps.zoom.min}〜${caps.zoom.max}`;
+  renderDiag();
   zoomSlider.min = caps.zoom.min;
   zoomSlider.max = caps.zoom.max;
   zoomSlider.step = caps.zoom.step || 0.1;
@@ -170,6 +183,8 @@ async function populateCameraSelect() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const cams = devices.filter((d) => d.kind === 'videoinput');
+    diag.camera = `${cams.length}台`;
+    renderDiag();
     if (cams.length < 2) { cameraSelect.classList.add('hidden'); return; }
     const currentId = stream.getVideoTracks()[0].getSettings().deviceId || '';
     cameraSelect.innerHTML = '';
@@ -217,6 +232,9 @@ function videoConstraints(cameraId) {
 
 async function startSession() {
   $('#start-error').textContent = '';
+  // 新しいセッション=三脚を立て直した前提なので、前回の線をリセットする
+  // (カメラ切替による内部的な再起動では消さない)
+  if (!switchingCamera) lineStore.clear();
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: videoConstraints(settings.cameraId),
@@ -641,9 +659,14 @@ async function playSavedClip(meta) {
 
 /* ================= Service Worker ================= */
 
+$('#app-version').textContent = `Swing Check ${APP_VERSION}`;
+renderDiag();
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js')
+      .then((reg) => reg.update().catch(() => {})) // 起動ごとに更新を確認
+      .catch(() => {});
   });
   // 新バージョンのSWが有効になったら自動リロードして即反映する
   // (初回インストール時とセッション中は除く。セッション中のリロードは録画が切れる)
