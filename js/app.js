@@ -5,7 +5,7 @@ import { AudioDetector } from './audio-detector.js';
 import { ClipStore } from './clip-store.js';
 import { LineOverlay, lineStore, LINE_COLORS } from './line-overlay.js';
 
-const APP_VERSION = 'v10';
+const APP_VERSION = 'v11';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -19,7 +19,10 @@ function renderDiag() {
 // 実機での不具合調査用: 予期しないエラーを画面に出す。
 // 同じエラーが連発してもトーストは10秒に1回まで(出続けて操作を邪魔しないように)
 let lastErrorToastAt = 0;
+const errorLog = []; // 自己診断レポート用に直近のエラーを保持
 function errorToast(msg) {
+  errorLog.push(msg);
+  if (errorLog.length > 5) errorLog.shift();
   const now = Date.now();
   if (now - lastErrorToastAt < 10000) return;
   lastErrorToastAt = now;
@@ -701,6 +704,62 @@ $('#btn-tap-debug').addEventListener('click', () => {
   tapDebug = !tapDebug;
   $('#btn-tap-debug').textContent = 'タップ診断: ' + (tapDebug ? 'ON' : 'OFF');
   $('#btn-tap-debug').classList.toggle('active', tapDebug);
+});
+
+// 自己診断: 保存クリップを自動で開き、各ボタンの位置と「何がタップを受けるか」を検査
+$('#btn-self-test').addEventListener('click', async () => {
+  const report = $('#self-test-report');
+  report.classList.remove('hidden');
+  const out = [];
+  const flush = () => { report.textContent = out.join('\n'); };
+  try {
+    out.push(`ver: ${APP_VERSION}`);
+    out.push(`UA: ${navigator.userAgent}`);
+    out.push(`画面: ${window.innerWidth}x${window.innerHeight} dpr:${window.devicePixelRatio}`);
+    out.push($('#diag-info').textContent);
+    out.push(`エラー履歴: ${errorLog.length ? errorLog.join(' | ') : 'なし'}`);
+    flush();
+
+    const items = await store.list();
+    out.push(`保存クリップ: ${items.length}件`);
+    if (!items.length) {
+      out.push('※クリップが無いためボタン検査は省略。1本保存してから再実行してください。');
+      flush();
+      return;
+    }
+
+    out.push('クリップを開いてボタンを検査中…');
+    flush();
+    await playSavedClip(items[0]);
+    await new Promise((res) => setTimeout(res, 1200));
+    out.push(`再生画面表示: ${!overlay.classList.contains('hidden')}`);
+    out.push(`動画サイズ: ${replayVideo.videoWidth}x${replayVideo.videoHeight} 再生中: ${!replayVideo.paused}`);
+
+    const targets = [
+      ['ライン', '#btn-line-mode'],
+      ['エクスポート', '#btn-export-clip'],
+      ['削除', '#btn-delete-clip'],
+      ['閉じる', '#btn-close-replay'],
+      ['速度0.5', '#replay-speed-buttons [data-speed="0.5"]'],
+    ];
+    for (const [name, sel] of targets) {
+      const el = document.querySelector(sel);
+      if (!el) { out.push(`${name}: 要素なし!`); continue; }
+      const b = el.getBoundingClientRect();
+      if (!b.width || !b.height) { out.push(`${name}: サイズ0!`); continue; }
+      const inVp = b.top >= 0 && b.bottom <= window.innerHeight ? 'OK' : '画面外!';
+      const stack = document.elementsFromPoint(b.left + b.width / 2, b.top + b.height / 2)
+        .slice(0, 3).map(describeEl).join(' > ');
+      const covered = stack.startsWith(describeEl(el)) ? '' : ' ←別要素が覆っている!';
+      out.push(`${name}: y=${Math.round(b.top)} ${inVp} 最前面: ${stack}${covered}`);
+    }
+    closeReplay();
+    out.push('検査完了。この画面をスクリーンショットして報告してください。');
+  } catch (e) {
+    out.push('診断中にエラー: ' + (e && e.message ? e.message : e));
+  } finally {
+    flush();
+  }
 });
 
 $('#btn-check-update').addEventListener('click', async () => {
