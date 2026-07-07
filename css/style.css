@@ -78,6 +78,9 @@ html, body {
   padding: calc(10px + env(safe-area-inset-top)) 12px 0;
 }
 .hud-bottom { padding: 0 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.hud-actions { display: flex; gap: 8px; }
+.hud-actions #btn-manual { flex: 1; }
+.hud-actions #btn-detect-toggle.paused { background: var(--danger); color: #fff; }
 
 .zoom-row { display: flex; align-items: center; gap: 10px; }
 .zoom-row input[type="range"] { flex: 1; }

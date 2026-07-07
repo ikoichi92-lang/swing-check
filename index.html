@@ -43,7 +43,10 @@
             <div class="meter-threshold"></div>
           </div>
         </div>
-        <button id="btn-manual" class="btn btn-primary">手動でクリップ切り出し</button>
+        <div class="hud-actions">
+          <button id="btn-detect-toggle" class="btn btn-small btn-ghost">検知: ON</button>
+          <button id="btn-manual" class="btn btn-primary">手動でクリップ切り出し</button>
+        </div>
       </div>
     </div>
   </div>
@@ -118,7 +121,7 @@
 <!-- ===== リプレイオーバーレイ ===== -->
 <div id="replay-overlay" class="replay-overlay hidden">
   <div class="replay-video-wrap">
-    <video id="replay-video" muted playsinline loop></video>
+    <video id="replay-video" muted playsinline></video>
     <div id="replay-paused-badge" class="paused-badge hidden">一時停止</div>
     <span id="replay-speed-badge" class="speed-badge"></span>
   </div>

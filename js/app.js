@@ -5,7 +5,7 @@ import { AudioDetector } from './audio-detector.js';
 import { ClipStore } from './clip-store.js';
 import { LineOverlay, lineStore, LINE_COLORS } from './line-overlay.js';
 
-const APP_VERSION = 'v12';
+const APP_VERSION = 'v13';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -286,7 +286,15 @@ async function startSession() {
     getThreshold: () => settings.threshold,
     getCooldownSec: () => settings.cooldownSec,
     onLevel: updateMeters,
-    onImpact: () => captureClip(),
+    onImpact: () => {
+      if (!detectionEnabled) return;
+      // リプレイを一時停止して確認中/ライン編集中は、勝手に次のクリップへ
+      // 切り替わらないよう自動検知を無視する(手動切り出しは可能)
+      const reviewing = !overlay.classList.contains('hidden') &&
+        (replayVideo.paused || !lineToolbar.classList.contains('hidden'));
+      if (reviewing) return;
+      captureClip();
+    },
   });
   await detector.start();
 
@@ -323,6 +331,16 @@ $('#btn-stop').addEventListener('click', () => {
 });
 $('#btn-manual').addEventListener('click', () => captureClip());
 
+// 音検知の一時停止(周囲が騒がしい時・リプレイをじっくり見たい時用)
+let detectionEnabled = true;
+$('#btn-detect-toggle').addEventListener('click', () => {
+  detectionEnabled = !detectionEnabled;
+  const btn = $('#btn-detect-toggle');
+  btn.textContent = '検知: ' + (detectionEnabled ? 'ON' : 'OFF');
+  btn.classList.toggle('paused', !detectionEnabled);
+  if (stream) statusText.textContent = detectionEnabled ? '監視中' : '検知停止中';
+});
+
 /* ================= クリップ切り出し ================= */
 
 async function captureClip() {
@@ -349,7 +367,7 @@ async function captureClip() {
     toast('切り出しに失敗しました: ' + e.message);
   } finally {
     capturing = false;
-    statusText.textContent = '監視中';
+    statusText.textContent = detectionEnabled ? '監視中' : '検知停止中';
   }
 }
 
@@ -395,21 +413,45 @@ function startReplayLoop(clip) {
   replayVideo.play().catch(() => {});
 }
 
-// 区間ループ+シークバー更新
+// 区間ループ+シークバー更新+停止復帰ウォッチドッグ
+let lastPlayhead = -1;
+let lastPlayheadChangeAt = 0;
 setInterval(() => {
   try {
     if (!replaying || overlay.classList.contains('hidden')) return;
     const { playStart = 0, playEnd = 0 } = replaying;
     if (playEnd <= playStart) return;
-    if (!replayVideo.paused && replayVideo.currentTime >= playEnd - 0.05) {
-      replayVideo.currentTime = playStart;
+    const ct = replayVideo.currentTime;
+
+    if (!replayVideo.paused) {
+      // 区間の両端を越えたら区間先頭へ(video要素のloop任せにしない)
+      if (ct >= playEnd - 0.05 || ct < playStart - 0.3) {
+        replayVideo.currentTime = playStart;
+      }
+      // 再生中なのに2秒以上進んでいない=デコーダ/シークのスタック → 復帰を試みる
+      const now = performance.now();
+      if (ct !== lastPlayhead) {
+        lastPlayhead = ct;
+        lastPlayheadChangeAt = now;
+      } else if (now - lastPlayheadChangeAt > 2000) {
+        lastPlayheadChangeAt = now;
+        replayVideo.currentTime = Math.min(Math.max(ct + 0.05, playStart), playEnd - 0.1);
+        replayVideo.play().catch(() => {});
+      }
     }
     if (!seekDragging) {
-      const p = (replayVideo.currentTime - playStart) / (playEnd - playStart);
+      const p = (ct - playStart) / (playEnd - playStart);
       seekBar.value = Math.round(Math.min(1, Math.max(0, p)) * 1000);
     }
   } catch { /* 50ms間隔のループでエラーを連発させない */ }
 }, 50);
+
+// loop属性を外したため、動画の自然終端に達したら区間先頭から再開する
+replayVideo.addEventListener('ended', () => {
+  if (!replaying) return;
+  replayVideo.currentTime = replaying.playStart || 0;
+  replayVideo.play().catch(() => {});
+});
 
 // タップで一時停止/再開
 replayVideo.addEventListener('click', () => {
